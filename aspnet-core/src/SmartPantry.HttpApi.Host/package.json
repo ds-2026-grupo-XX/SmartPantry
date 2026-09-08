@@ -1,0 +1,9 @@
+{
+    "version": "1.0.0",
+    "name": "my-app",
+    "private": true,
+    "packageManager": "yarn@1.22.19",
+    "dependencies": {
+        "@abp/aspnetcore.mvc.ui.theme.leptonxlite": "~5.6.0"
+    }
+}
