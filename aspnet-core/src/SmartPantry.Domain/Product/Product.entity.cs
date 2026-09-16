@@ -1,7 +1,7 @@
 using System;
 using Volo.Abp.Domain.Entities;
 
-namespace SmartPantry.Entities;
+namespace SmartPantry;
 
 public class Product : BasicAggregateRoot<Guid>
 {
