@@ -34,10 +34,8 @@ public class ProductAppService : ApplicationService, IProductAppService
     public async Task<ProductDto> CreateAsync(ProductDto product)
     {
         var prod = await _productRepository.InsertAsync(
-            new Product
+            new Product(Guid.NewGuid(), product.CodigoDeBarras, product.NombreVisible)
             {
-                NombreVisible = product.NombreVisible,
-                CodigoDeBarras = product.CodigoDeBarras,
                 Imagen = product.Imagen,
                 NutriScore = product.NutriScore,
                 Nova = product.Nova
