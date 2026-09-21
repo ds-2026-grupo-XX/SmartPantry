@@ -5,22 +5,50 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
-namespace SmartPantry;
-
-public class ProductAppService : ApplicationService, IProductAppService
+namespace SmartPantry
 {
-    private readonly IRepository<Product, Guid> _productRepository;
-
-    public ProductAppService(IRepository<Product, Guid> productRepository)
+    public class ProductAppService : ApplicationService, IProductAppService
     {
-        _productRepository = productRepository;
-    }
+        private readonly IRepository<Product, Guid> _productRepository;
 
-    public async Task<List<ProductDto>> GetListAsync()
-    {
-        var products = await _productRepository.GetListAsync();
-        return products
-            .Select(prod => new ProductDto
+        public ProductAppService(IRepository<Product, Guid> productRepository)
+        {
+            _productRepository = productRepository;
+        }
+
+        public async Task<List<ProductDto>> GetListAsync()
+        {
+            var products = await _productRepository.GetListAsync();
+            return products
+                .Select(prod => new ProductDto
+                {
+                    Id = prod.Id,
+                    NombreVisible = prod.NombreVisible,
+                    CodigoDeBarras = prod.CodigoDeBarras,
+                    Imagen = prod.Imagen,
+                    NutriScore = prod.NutriScore,
+                    Nova = prod.Nova
+                }).ToList();
+        }
+
+        public async Task<ProductDto> GetAsync(Guid id)
+        {
+            var product = await _productRepository.GetAsync(id);
+            return ObjectMapper.Map<Product, ProductDto>(product);
+        }
+
+        public async Task<ProductDto> CreateAsync(ProductDto product)
+        {
+            var prod = await _productRepository.InsertAsync(
+                new Product(Guid.NewGuid(), product.CodigoDeBarras, product.NombreVisible)
+                {
+                    Imagen = product.Imagen,
+                    NutriScore = product.NutriScore,
+                    Nova = product.Nova
+                }
+            );
+
+            return new ProductDto
             {
                 Id = prod.Id,
                 NombreVisible = prod.NombreVisible,
@@ -28,34 +56,12 @@ public class ProductAppService : ApplicationService, IProductAppService
                 Imagen = prod.Imagen,
                 NutriScore = prod.NutriScore,
                 Nova = prod.Nova
-            }).ToList();
-    }
+            };
+        }
 
-    public async Task<ProductDto> CreateAsync(ProductDto product)
-    {
-        var prod = await _productRepository.InsertAsync(
-            new Product(Guid.NewGuid(), product.CodigoDeBarras, product.NombreVisible)
-            {
-                Imagen = product.Imagen,
-                NutriScore = product.NutriScore,
-                Nova = product.Nova
-            }
-        );
-
-        return new ProductDto
+        public async Task DeleteAsync(Guid id)
         {
-            Id = prod.Id,
-            NombreVisible = prod.NombreVisible,
-            CodigoDeBarras = prod.CodigoDeBarras,
-            Imagen = prod.Imagen,
-            NutriScore = prod.NutriScore,
-            Nova = prod.Nova
-        };
+            await _productRepository.DeleteAsync(id);
+        }
     }
-
-    public async Task DeleteAsync(Guid id)
-    {
-        await _productRepository.DeleteAsync(id);
-    }
-
 }

@@ -10,4 +10,5 @@ public interface IProductAppService : IApplicationService
   Task<List<ProductDto>> GetListAsync();
   Task<ProductDto> CreateAsync(ProductDto product);
   Task DeleteAsync(Guid id);
+  Task<ProductDto> GetAsync(Guid id);
 }
