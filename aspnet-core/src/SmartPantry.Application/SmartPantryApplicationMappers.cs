@@ -4,9 +4,8 @@ using Volo.Abp.Mapperly;
 namespace SmartPantry;
 
 [Mapper]
-public partial class SmartPantryApplicationMappers
+public partial class SmartPantryApplicationMappers : MapperBase<Product, ProductDto>
 {
-    /* You can configure your Mapperly mapping configuration here.
-     * Alternatively, you can split your mapping configurations
-     * into multiple mapper classes for a better organization. */
+    public override partial ProductDto Map(Product source);
+    public override partial void Map(Product source, ProductDto destination);
 }
