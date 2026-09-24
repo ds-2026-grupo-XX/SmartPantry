@@ -61,7 +61,30 @@ namespace SmartPantry
 
         public async Task DeleteAsync(Guid id)
         {
-            await _productRepository.DeleteAsync(id);
+           var prod= await _productRepository.GetAsync(id);
+           prod.Borrado = true;
+           await _productRepository.UpdateAsync(prod);
+        }
+        public async Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto productInput)
+        {
+         var prod = await _productRepository.GetAsync(id);
+            prod.Actualizar(
+                codigoDeBarras: productInput.CodigoDeBarras,
+                nombreVisible: productInput.NombreVisible,
+                imagen: productInput.Imagen,
+                nutriScore: productInput.NutriScore,
+                nova: productInput.Nova
+            );
+            await _productRepository.UpdateAsync(prod);
+            return new ProductDto
+            {
+                Id = prod.Id,
+                NombreVisible = prod.NombreVisible,
+                CodigoDeBarras = prod.CodigoDeBarras,
+                Imagen = prod.Imagen,
+                NutriScore = prod.NutriScore,
+                Nova = prod.Nova
+            };
         }
     }
 }

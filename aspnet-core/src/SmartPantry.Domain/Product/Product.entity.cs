@@ -12,8 +12,9 @@ public class Product : BasicAggregateRoot<Guid>
   public string Imagen { get; set; } = string.Empty;
   public float NutriScore { get; set; } = 0;
   public int Nova { get; set; } = 1;
+  public bool Borrado { get; set; } = false;
 
-  protected Product() { }
+    protected Product() { }
 
   public Product(Guid id, string codDeBarra, string nombVisible) : base(id)
   {
@@ -22,4 +23,33 @@ public class Product : BasicAggregateRoot<Guid>
 
     NombreVisible = nombVisible.ToLower();
   }
+    public void Actualizar(
+        string? codigoDeBarras = null,
+        string? nombreVisible = null,
+        string? imagen = null,
+        float? nutriScore = null,
+        int? nova = null)
+    {
+       if (!string.IsNullOrWhiteSpace(codigoDeBarras))
+        {
+       CodigoDeBarras = codigoDeBarras.Trim();
+        }
+       if (!string.IsNullOrWhiteSpace(nombreVisible))
+        {
+            NombreVisible = nombreVisible.Trim();
+        }
+       if (imagen != null)
+        {
+            Imagen = imagen;
+        }
+       if (nutriScore.HasValue)
+        {
+           NutriScore = nutriScore.Value;
+        }
+        if (nova.HasValue)
+        {
+           Nova = nova.Value;
+        }
+    }
 }
+
