@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
@@ -16,21 +17,28 @@ namespace SmartPantry
             _productRepository = productRepository;
         }
 
-        public async Task<List<ProductDto>> GetListAsync()
+        public async Task<PagedResultDto<ProductDto>> GetListAsync(PagedAndSortedResultRequestDto input)
         {
-            var products = await _productRepository.GetListAsync();
-            return products
-                .Select(prod => new ProductDto
-                {
-                    Id = prod.Id,
-                    NombreVisible = prod.NombreVisible,
-                    CodigoDeBarras = prod.CodigoDeBarras,
-                    Imagen = prod.Imagen,
-                    NutriScore = prod.NutriScore,
-                    Nova = prod.Nova
-                }).ToList();
+            var totalCount = await _productRepository.GetCountAsync();
+            var products = await _productRepository.GetPagedListAsync(
+                input.SkipCount,
+                input.MaxResultCount,
+                input.Sorting ?? nameof(Product.NombreVisible) + " asc"
+            );
+            var productDtos = products.Select(prod => new ProductDto
+            {
+                Id = prod.Id,
+                NombreVisible = prod.NombreVisible,
+                CodigoDeBarras = prod.CodigoDeBarras,
+                Imagen = prod.Imagen,
+                NutriScore = prod.NutriScore,
+                Nova = prod.Nova
+            }).ToList();
+            return new PagedResultDto<ProductDto>(
+                totalCount,
+                productDtos
+            );
         }
-
         public async Task<ProductDto> GetAsync(Guid id)
         {
             var product = await _productRepository.GetAsync(id);
