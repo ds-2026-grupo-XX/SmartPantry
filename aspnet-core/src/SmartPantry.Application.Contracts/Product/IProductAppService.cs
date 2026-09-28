@@ -7,12 +7,11 @@ using Volo.Abp.Application.Services;
 
 namespace SmartPantry;
 
-public interface IProductAppService : IApplicationService
+public interface IProductAppService :
+    ICrudAppService<ProductDto, 
+        Guid, 
+        PagedAndSortedResultRequestDto,
+        CreateUpdateProductDto>
 {
-    Task<PagedResultDto<ProductDto>> GetListAsync(PagedAndSortedResultRequestDto input);
-    Task<ProductDto> CreateAsync(ProductDto product);
-  Task DeleteAsync(Guid id);
-  Task<ProductDto> GetAsync(Guid id);
-    Task<ProductDto> UpdateAsync(Guid id, UpdateProductDto product);
     
 }
