@@ -1,67 +1,48 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
-namespace SmartPantry
+namespace SmartPantry;
+
+public class ProductAppService :
+    CrudAppService<Product, ProductDto, Guid, PagedAndSortedResultRequestDto, CreateUpdateProductDto>,
+    IProductAppService
 {
-    public class ProductAppService : ApplicationService, IProductAppService
+    public ProductAppService(IRepository<Product, Guid> repository) : base(repository)
     {
-        private readonly IRepository<Product, Guid> _productRepository;
+    }
 
-        public ProductAppService(IRepository<Product, Guid> productRepository)
-        {
-            _productRepository = productRepository;
-        }
+    public override async Task<ProductDto> CreateAsync(CreateUpdateProductDto input)
+    {
+        await CheckCreatePolicyAsync();
 
-        public async Task<List<ProductDto>> GetListAsync()
-        {
-            var products = await _productRepository.GetListAsync();
-            return products
-                .Select(prod => new ProductDto
-                {
-                    Id = prod.Id,
-                    NombreVisible = prod.NombreVisible,
-                    CodigoDeBarras = prod.CodigoDeBarras,
-                    Imagen = prod.Imagen,
-                    NutriScore = prod.NutriScore,
-                    Nova = prod.Nova
-                }).ToList();
-        }
+        var product = new Product(
+            GuidGenerator.Create(),
+            input.CodigoDeBarras,
+            input.NombreVisible,
+            input.Imagen,
+            input.NutriScore,
+            input.Nova);
 
-        public async Task<ProductDto> GetAsync(Guid id)
-        {
-            var product = await _productRepository.GetAsync(id);
-            return ObjectMapper.Map<Product, ProductDto>(product);
-        }
+        await Repository.InsertAsync(product, autoSave: true);
+        return await MapToGetOutputDtoAsync(product);
+    }
 
-        public async Task<ProductDto> CreateAsync(ProductDto product)
-        {
-            var prod = await _productRepository.InsertAsync(
-                new Product(Guid.NewGuid(), product.CodigoDeBarras, product.NombreVisible)
-                {
-                    Imagen = product.Imagen,
-                    NutriScore = product.NutriScore,
-                    Nova = product.Nova
-                }
-            );
+    public override async Task<ProductDto> UpdateAsync(Guid id, CreateUpdateProductDto input)
+    {
+        await CheckUpdatePolicyAsync();
 
-            return new ProductDto
-            {
-                Id = prod.Id,
-                NombreVisible = prod.NombreVisible,
-                CodigoDeBarras = prod.CodigoDeBarras,
-                Imagen = prod.Imagen,
-                NutriScore = prod.NutriScore,
-                Nova = prod.Nova
-            };
-        }
+        var product = await Repository.GetAsync(id);
+        product.ActualizarDatos(
+            input.CodigoDeBarras,
+            input.NombreVisible,
+            input.Imagen,
+            input.NutriScore,
+            input.Nova);
 
-        public async Task DeleteAsync(Guid id)
-        {
-            await _productRepository.DeleteAsync(id);
-        }
+        await Repository.UpdateAsync(product, autoSave: true);
+        return await MapToGetOutputDtoAsync(product);
     }
 }

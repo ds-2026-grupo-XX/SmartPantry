@@ -4,6 +4,7 @@ using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.Modeling;
 using Volo.Abp.FeatureManagement.EntityFrameworkCore;
 using Volo.Abp.Identity;
 using Volo.Abp.Identity.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public class SmartPantryDbContext :
     ITenantManagementDbContext
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
-
+    public DbSet<Product> Products { get; set; }
     #region Entities from the modules
 
     /* Notice: We only implemented IIdentityDbContext and ITenantManagementDbContext
@@ -50,7 +51,7 @@ public class SmartPantryDbContext :
     // Tenant Management
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<TenantConnectionString> TenantConnectionStrings { get; set; }
-    public DbSet<Product> Products { get; set;}
+   // public DbSet<Product> Products { get; set;}
 
     #endregion
 
@@ -86,7 +87,11 @@ public class SmartPantryDbContext :
 
         builder.Entity<Product>(p =>
         {
-           p.ToTable("Products"); 
+           p.ToTable("Products", SmartPantryConsts.DbSchema);
+            p.ConfigureByConvention(); // auto configure for the base class props
+                            p.Property(x=>x.CodigoDeBarras).IsRequired().HasMaxLength(ProductConst.MaxCodDeBarraLength);
+            p.Property(x => x.NombreVisible).IsRequired().HasMaxLength(ProductConst.MaxNombreVisibleLength);
+            p.Property(x => x.Imagen).IsRequired(false);
         });
     }
 }
