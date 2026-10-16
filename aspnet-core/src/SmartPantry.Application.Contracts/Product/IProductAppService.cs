@@ -13,5 +13,6 @@ public interface IProductAppService :
         PagedAndSortedResultRequestDto,
         CreateUpdateProductDto>
 {
-    
+    Task<ExternalProductDto> GetByBarcodeAsync(BarcodeSearchInputDto input);
 }
+
