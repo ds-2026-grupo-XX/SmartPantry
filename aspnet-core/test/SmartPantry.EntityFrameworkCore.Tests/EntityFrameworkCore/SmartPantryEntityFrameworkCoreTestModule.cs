@@ -9,6 +9,7 @@ using Volo.Abp.Modularity;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.Uow;
+using NSubstitute;
 
 namespace SmartPantry.EntityFrameworkCore;
 
@@ -23,6 +24,8 @@ public class SmartPantryEntityFrameworkCoreTestModule : AbpModule
 
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
+        var externalClientMock = Substitute.For<IExternalProductCatalogClient>();
+        context.Services.AddSingleton(externalClientMock);
         Configure<FeatureManagementOptions>(options =>
         {
             options.SaveStaticFeaturesToDatabase = false;
