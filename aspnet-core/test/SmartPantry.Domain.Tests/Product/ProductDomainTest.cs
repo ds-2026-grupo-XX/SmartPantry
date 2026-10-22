@@ -27,8 +27,9 @@ namespace SmartPantry
             var ima = "http://img.img";
             var nutriScr = 1.2f;
             var nov = 2;
+            var marca = "Arcor";
 
-            var prod2 = new Product(id2, codDeBara2, nombVisible2, ima, nutriScr, nov);            
+            var prod2 = new Product(id2, codDeBara2, nombVisible2,marca, ima,nutriScr,nov);            
 
             prod2.CodigoDeBarras.ShouldBe("77889912");
             prod2.NombreVisible.ShouldBe("pure tomate");
