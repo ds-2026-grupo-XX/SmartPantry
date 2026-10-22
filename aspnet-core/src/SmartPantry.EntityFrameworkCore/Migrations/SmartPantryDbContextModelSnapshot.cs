@@ -29,9 +29,6 @@ namespace SmartPantry.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("Borrado")
-                        .HasColumnType("bit");
-
                     b.Property<string>("CodigoDeBarras")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -68,15 +65,18 @@ namespace SmartPantry.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("LastModifierId");
 
+                    b.Property<string>("Marca")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NombreVisible")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("nvarchar(128)");
 
-                    b.Property<int>("Nova")
+                    b.Property<int?>("Nova")
                         .HasColumnType("int");
 
-                    b.Property<float>("NutriScore")
+                    b.Property<float?>("NutriScore")
                         .HasColumnType("real");
 
                     b.HasKey("Id");

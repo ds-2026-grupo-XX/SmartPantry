@@ -32,7 +32,7 @@ public class ProductAppServiceExternal_Tests
         {
             CodigoDeBarras = barcode,
             NombreVisible = "Nutella",
-           // Brand = "Ferrero"
+            Marca = "Ferrero"
         };
 
         _externalClientMock.GetByBarcodeAsync(barcode).Returns(mockDto);
@@ -45,7 +45,7 @@ public class ProductAppServiceExternal_Tests
         // Assert
         result.ShouldNotBeNull();
         result.NombreVisible.ShouldBe("Nutella");
-       // result.Brand.ShouldBe("Ferrero");
+       result.Marca.ShouldBe("Ferrero");
     }
 
     [Fact]
@@ -62,5 +62,55 @@ public class ProductAppServiceExternal_Tests
         {
             await _productAppService.GetByBarcodeAsync(input);
         });
+    }
+    [Fact]
+    public async Task Should_ThrowException_When_RateLimitExceeded()
+    {
+        // Arrange
+        var barcode = "3017620422003";
+        _externalClientMock.GetByBarcodeAsync(barcode).Returns(Task.FromException<ExternalProductDto?>(new UserFriendlyException("Se ha superado el limite de solicitudes a la API Externa. Intente mas tarde")
+        ));
+        var input = new BarcodeSearchInputDto { CodigoDeBarras = barcode };
+        // Act & Assert
+        await Should.ThrowAsync<UserFriendlyException>(async () =>
+        {
+            await _productAppService.GetByBarcodeAsync(input);
+        });
+    }
+    [Fact]
+    public async Task Should_ThrowException_when_APIError()
+    {
+        // Arrange
+        var barcode = "3017620422003";
+        _externalClientMock.GetByBarcodeAsync(barcode).Returns(Task.FromException<ExternalProductDto?>(new UserFriendlyException("Error en la API Externa. Intente mas tarde")
+        ));
+        var input = new BarcodeSearchInputDto { CodigoDeBarras = barcode };
+        // Act & Assert
+        await Should.ThrowAsync<UserFriendlyException>(async () =>
+        {
+            await _productAppService.GetByBarcodeAsync(input);
+        });
+    }
+    [Fact]
+    public async Task Should_HandleProduct_When_BrandIsMissing()
+    {
+        // Arrange
+        var barcode = "3017620422003";
+        var externalDto = new ExternalProductDto
+        {
+            CodigoDeBarras = barcode,
+            NombreVisible = "Producto Sin Marca",
+            Marca = null 
+        };
+
+        _externalClientMock.GetByBarcodeAsync(barcode).Returns(externalDto);
+        var input = new BarcodeSearchInputDto { CodigoDeBarras = barcode };
+
+        // Act
+        var result = await _productAppService.GetByBarcodeAsync(input);
+
+        // Assert
+        result.ShouldNotBeNull();
+        result.Marca.ShouldBeNull();
     }
 }

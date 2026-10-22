@@ -21,27 +21,28 @@ namespace SmartPantry
         [Fact]
         public async Task Should_Get_List_Of_Products()
         {
+            
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "11223344", "Arroz 1kg"));
-            await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "22334411", "Azucar 1kg"));
+            await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "22334411", "Azucar 1kg", "Ledesma")); 
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "44223311", "Yerba 1kg"));
 
             var result = await _productRepository.GetListAsync();
 
             result.Count.ShouldBe(3);
+            result.ShouldContain(p => p.NombreVisible == "azucar 1kg" && p.Marca == "Ledesma");
         }
 
         [Fact]
-        public async Task Should_Create_A_New_Product()
+        public async Task Should_Create_A_New_Product_With_Brand()
         {
             var id = Guid.NewGuid();
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "11223344", "Arroz 1kg"));
-            await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "22334411", "Azucar 1kg"));
-            await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "44223311", "Yerba 1kg"));
-            await _productRepository.InsertAsync(new Product(id, "44223333", "Harina 1kg"));
+            await _productRepository.InsertAsync(new Product(id, "44223333", "Harina 1kg", "Blancaflor")); 
 
             var result = await _productRepository.GetAsync(id);
 
             result.NombreVisible.ShouldBe("harina 1kg");
+            result.Marca.ShouldBe("Blancaflor"); 
         }
 
         [Fact]
@@ -51,7 +52,7 @@ namespace SmartPantry
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "11223344", "Arroz 1kg"));
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "22334411", "Azucar 1kg"));
             await _productRepository.InsertAsync(new Product(Guid.NewGuid(), "44223311", "Yerba 1kg"));
-            await _productRepository.InsertAsync(new Product(id, "44223333", "Harina 1kg"));
+            await _productRepository.InsertAsync(new Product(id, "44223333", "Harina 1kg", "Cañuelas"));
 
             await _productRepository.DeleteAsync(id);
 
@@ -62,6 +63,4 @@ namespace SmartPantry
             result.Count.ShouldBe(3);
         }
     }
-
-    
 }
