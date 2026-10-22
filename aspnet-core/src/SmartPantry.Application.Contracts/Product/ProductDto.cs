@@ -13,5 +13,6 @@ public class ProductDto: AuditedEntityDto<Guid>
   public string? Imagen { get; set; } = null;
   public float? NutriScore { get; set; } = 0;
   public int? Nova { get; set; } = 1;
-   
+public string? Marca { get; set; } = null;
+
 }
