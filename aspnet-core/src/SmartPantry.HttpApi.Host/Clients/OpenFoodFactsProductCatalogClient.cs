@@ -2,6 +2,7 @@
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Volo.Abp;
 
 namespace SmartPantry.HttpApi.Host.Clients;
 
@@ -21,11 +22,18 @@ public class OpenFoodFactsProductCatalogClient : IExternalProductCatalogClient
 
         var response = await _httpClient.GetAsync(url);
 
+        if (response.StatusCode == (HttpStatusCode)429)
+        {
+            throw new UserFriendlyException("Se ha superado el limite de solicitudes a la API Externa. Intente mas tarde"); 
+        }
+        if ((int)response.StatusCode >= 500)
+        {
+            throw new UserFriendlyException("Error en la API Externa. Intente mas tarde");
+        }
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return null; 
+            return null; // Producto no encontrado
         }
-
         response.EnsureSuccessStatusCode();
 
         // Deserializamos usando clases internas exclusivas para el JSON externo
@@ -41,7 +49,7 @@ public class OpenFoodFactsProductCatalogClient : IExternalProductCatalogClient
         {
             CodigoDeBarras = CodigoDeBarras,
             NombreVisible = apiResponse.Product.NombreVisible,
-           // Brand = apiResponse.Product.Brands,
+            Marca = apiResponse.Product.Marca,
             Imagen = apiResponse.Product.Imagen
         };
     }
@@ -55,7 +63,7 @@ public class OpenFoodFactsProductCatalogClient : IExternalProductCatalogClient
     private class OpenFoodFactsProductDetails
     {
         public string? NombreVisible{ get; set; }
-       // public string? Brands { get; set; }
+        public string? Marca { get; set; }
         public string? Imagen { get; set; }
         //public string? ImageFrontUrl { get; set; }
     }
