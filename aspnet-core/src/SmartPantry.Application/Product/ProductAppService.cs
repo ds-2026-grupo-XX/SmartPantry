@@ -59,7 +59,8 @@ public class ProductAppService :
     {
         var externalProduct = await _externalClient.GetByBarcodeAsync(input.CodigoDeBarras);
 
-        if (externalProduct == null)
+        
+        if (externalProduct == null || !externalProduct.Encontrado)
         {
             throw new UserFriendlyException("El producto no fue encontrado en el catálogo externo.");
         }
