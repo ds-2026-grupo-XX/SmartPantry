@@ -31,6 +31,7 @@ public class ProductAppServiceExternal_Tests
         var mockDto = new ExternalProductDto
         {
             CodigoDeBarras = barcode,
+            Encontrado = true,
             NombreVisible = "Nutella",
             Marca = "Ferrero"
         };
@@ -44,16 +45,23 @@ public class ProductAppServiceExternal_Tests
 
         // Assert
         result.ShouldNotBeNull();
+        result.Encontrado.ShouldBeTrue();
         result.NombreVisible.ShouldBe("Nutella");
-       result.Marca.ShouldBe("Ferrero");
+        result.Marca.ShouldBe("Ferrero");
     }
 
     [Fact]
     public async Task Should_Throw_Exception_When_Product_Not_Found_Externally()
     {
-        // Arrange
+        // Arrange: 
         var barcode = "0000000000000";
-        _externalClientMock.GetByBarcodeAsync(barcode).Returns((ExternalProductDto?)null);
+        var mockDto = new ExternalProductDto
+        {
+            CodigoDeBarras = barcode,
+            Encontrado = false 
+        };
+
+        _externalClientMock.GetByBarcodeAsync(barcode).Returns(mockDto);
 
         var input = new BarcodeSearchInputDto { CodigoDeBarras = barcode };
 
@@ -63,6 +71,7 @@ public class ProductAppServiceExternal_Tests
             await _productAppService.GetByBarcodeAsync(input);
         });
     }
+
     [Fact]
     public async Task Should_ThrowException_When_RateLimitExceeded()
     {
@@ -77,6 +86,7 @@ public class ProductAppServiceExternal_Tests
             await _productAppService.GetByBarcodeAsync(input);
         });
     }
+
     [Fact]
     public async Task Should_ThrowException_when_APIError()
     {
@@ -91,6 +101,7 @@ public class ProductAppServiceExternal_Tests
             await _productAppService.GetByBarcodeAsync(input);
         });
     }
+
     [Fact]
     public async Task Should_HandleProduct_When_BrandIsMissing()
     {
@@ -99,8 +110,9 @@ public class ProductAppServiceExternal_Tests
         var externalDto = new ExternalProductDto
         {
             CodigoDeBarras = barcode,
+            Encontrado = true, 
             NombreVisible = "Producto Sin Marca",
-            Marca = null 
+            Marca = null
         };
 
         _externalClientMock.GetByBarcodeAsync(barcode).Returns(externalDto);
@@ -111,6 +123,7 @@ public class ProductAppServiceExternal_Tests
 
         // Assert
         result.ShouldNotBeNull();
+        result.Encontrado.ShouldBeTrue();
         result.Marca.ShouldBeNull();
     }
 }
