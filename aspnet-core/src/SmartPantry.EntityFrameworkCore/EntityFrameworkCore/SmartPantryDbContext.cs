@@ -26,6 +26,8 @@ public class SmartPantryDbContext :
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
     public DbSet<Product> Products { get; set; }
+    public DbSet<ItemDespensa> ItemsDespensa { get; set; }
+    public DbSet<ExpirationAlert> ExpirationAlerts { get; set; }
     #region Entities from the modules
 
     /* Notice: We only implemented IIdentityDbContext and ITenantManagementDbContext
@@ -92,6 +94,19 @@ public class SmartPantryDbContext :
                             p.Property(x=>x.CodigoDeBarras).IsRequired().HasMaxLength(ProductConst.MaxCodDeBarraLength);
             p.Property(x => x.NombreVisible).IsRequired().HasMaxLength(ProductConst.MaxNombreVisibleLength);
             p.Property(x => x.Imagen).IsRequired(false);
+        });
+        builder.Entity<ExpirationAlert>(b =>
+        {
+            b.ToTable(SmartPantryConsts.DbTablePrefix + "ExpirationAlerts", SmartPantryConsts.DbSchema);
+
+            b.ConfigureByConvention(); // Configuración estándar de ABP
+
+            // Propiedades
+            b.Property(x => x.Mensaje).IsRequired().HasMaxLength(500);
+
+            // ÍNDICE ÚNICO: Evita duplicados a nivel de base de datos para un mismo ítem y tipo de advertencia
+            b.HasIndex(x => new { x.ItemDespensaId, x.Tipo })
+             .IsUnique();
         });
     }
 }
