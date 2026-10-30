@@ -102,7 +102,7 @@ public class SmartPantryDbContext :
             b.ConfigureByConvention(); // Configuración estándar de ABP
 
             // Propiedades
-            b.Property(x => x.Mensaje).IsRequired().HasMaxLength(500);
+            b.Property(x => x.Mensaje).IsRequired().HasMaxLength(ExpirationAlertConst.MaxMensajeLength);
 
             // ÍNDICE ÚNICO: Evita duplicados a nivel de base de datos para un mismo ítem y tipo de advertencia
             b.HasIndex(x => new { x.ItemDespensaId, x.Tipo })

@@ -30,7 +30,7 @@ public class ExpirationProcessorService : ITransientDependency
 
     public async Task ProcesarVencimientosAsync(DateOnly hoy)
     {
-        var fechaUmbral = hoy.AddDays(3);
+        var fechaUmbral = hoy.AddDays(ExpirationConst.UmbralDiasAviso);
 
         var items = await _itemRepository.GetListAsync(
             x => x.Estado == EstadoItemDespensa.Disponible && x.FechaVencimiento != null
