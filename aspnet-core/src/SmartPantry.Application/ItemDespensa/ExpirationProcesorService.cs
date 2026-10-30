@@ -6,7 +6,7 @@ using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 using static SmartPantry.ItemDespensa;
 
-namespace SmartPantry; // Ajusta el namespace según tu estructura
+namespace SmartPantry;
 
 public class ExpirationProcessorService : ITransientDependency
 {
@@ -26,10 +26,8 @@ public class ExpirationProcessorService : ITransientDependency
 
     public async Task ProcesarVencimientosAsync(DateOnly hoy)
     {
-        
         var fechaUmbral = hoy.AddDays(3);
 
-        // Obtenemos los ítems activos/disponibles que tengan fecha de vencimiento usando el repositorio de ABP
         var items = await _itemRepository.GetListAsync(
             x => x.Estado == EstadoItemDespensa.Disponible && x.FechaVencimiento != null
         );
@@ -40,7 +38,6 @@ public class ExpirationProcessorService : ITransientDependency
             TipoAdvertenciaVencimiento? tipoDetectado = null;
             string mensaje = string.Empty;
 
-            // Regla de negocio de umbrales y vencidos[cite: 1, 2]
             if (fechaVenc < hoy)
             {
                 tipoDetectado = TipoAdvertenciaVencimiento.Vencido;
@@ -88,6 +85,27 @@ public class ExpirationProcessorService : ITransientDependency
                         adv.Desactivar();
                         await _alertRepository.UpdateAsync(adv);
                     }
+                }
+
+                await uow.CompleteAsync();
+            }
+        }
+
+        // Alertas activas de ítems que ya no corresponden (consumidos o sin fecha)
+        var idsVigentes = items.Select(i => i.Id).ToHashSet();
+        var alertasActivas = await _alertRepository.GetListAsync(a => a.Activa);
+        var sinCorresponder = alertasActivas
+            .Where(a => !idsVigentes.Contains(a.ItemDespensaId))
+            .ToList();
+
+        if (sinCorresponder.Count > 0)
+        {
+            using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
+            {
+                foreach (var alerta in sinCorresponder)
+                {
+                    alerta.Desactivar();
+                    await _alertRepository.UpdateAsync(alerta);
                 }
 
                 await uow.CompleteAsync();
