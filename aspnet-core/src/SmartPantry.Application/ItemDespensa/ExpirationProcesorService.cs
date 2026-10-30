@@ -24,10 +24,9 @@ public class ExpirationProcessorService : ITransientDependency
         _unitOfWorkManager = unitOfWorkManager;
     }
 
-    public async Task ProcesarVencimientosAsync()
+    public async Task ProcesarVencimientosAsync(DateOnly hoy)
     {
-        // Definimos el umbral de aviso (ej: 3 días)[cite: 1]
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        
         var fechaUmbral = hoy.AddDays(3);
 
         // Obtenemos los ítems activos/disponibles que tengan fecha de vencimiento usando el repositorio de ABP
