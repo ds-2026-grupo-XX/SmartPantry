@@ -5,6 +5,7 @@ using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Uow;
 using static SmartPantry.ItemDespensa;
+using Microsoft.Extensions.Logging;
 
 namespace SmartPantry;
 
@@ -13,15 +14,18 @@ public class ExpirationProcessorService : ITransientDependency
     private readonly IRepository<ItemDespensa, Guid> _itemRepository;
     private readonly IRepository<ExpirationAlert, Guid> _alertRepository;
     private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly ILogger<ExpirationProcessorService> _logger;
 
     public ExpirationProcessorService(
         IRepository<ItemDespensa, Guid> itemRepository,
         IRepository<ExpirationAlert, Guid> alertRepository,
-        IUnitOfWorkManager unitOfWorkManager)
+        IUnitOfWorkManager unitOfWorkManager,
+        ILogger<ExpirationProcessorService> logger)
     {
         _itemRepository = itemRepository;
         _alertRepository = alertRepository;
         _unitOfWorkManager = unitOfWorkManager;
+        _logger = logger;
     }
 
     public async Task ProcesarVencimientosAsync(DateOnly hoy)
@@ -48,49 +52,54 @@ public class ExpirationProcessorService : ITransientDependency
                 tipoDetectado = TipoAdvertenciaVencimiento.ProximoAVencer;
                 mensaje = $"El producto está próximo a vencer el {fechaVenc:yyyy-MM-dd}.";
             }
-
-            using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
+            try
             {
-                var advertenciaExistente = await _alertRepository.FirstOrDefaultAsync(
-                    a => a.ItemDespensaId == item.Id && a.Tipo == tipoDetectado
-                );
-
-                if (tipoDetectado != null)
+                using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
                 {
-                    if (advertenciaExistente == null)
+                    var advertenciaExistente = await _alertRepository.FirstOrDefaultAsync(
+                        a => a.ItemDespensaId == item.Id && a.Tipo == tipoDetectado
+                    );
+
+                    if (tipoDetectado != null)
                     {
-                        var nuevaAdvertencia = new ExpirationAlert(
-                            Guid.NewGuid(),
-                            item.Id,
-                            tipoDetectado.Value,
-                            mensaje
-                        );
-                        await _alertRepository.InsertAsync(nuevaAdvertencia);
+                        if (advertenciaExistente == null)
+                        {
+                            var nuevaAdvertencia = new ExpirationAlert(
+                                Guid.NewGuid(),
+                                item.Id,
+                                tipoDetectado.Value,
+                                mensaje
+                            );
+                            await _alertRepository.InsertAsync(nuevaAdvertencia);
+                        }
+                        else
+                        {
+                            advertenciaExistente.ActualizarMensaje(mensaje);
+                            await _alertRepository.UpdateAsync(advertenciaExistente);
+                        }
                     }
-                    else
+
+                    var advertenciasActivasDelItem = await _alertRepository.GetListAsync(
+                        a => a.ItemDespensaId == item.Id && a.Activa
+                    );
+
+                    foreach (var adv in advertenciasActivasDelItem)
                     {
-                        advertenciaExistente.ActualizarMensaje(mensaje);
-                        await _alertRepository.UpdateAsync(advertenciaExistente);
+                        if (adv.Tipo != tipoDetectado)
+                        {
+                            adv.Desactivar();
+                            await _alertRepository.UpdateAsync(adv);
+                        }
                     }
+
+                    await uow.CompleteAsync();
                 }
-
-                var advertenciasActivasDelItem = await _alertRepository.GetListAsync(
-                    a => a.ItemDespensaId == item.Id && a.Activa
-                );
-
-                foreach (var adv in advertenciasActivasDelItem)
-                {
-                    if (adv.Tipo != tipoDetectado)
-                    {
-                        adv.Desactivar();
-                        await _alertRepository.UpdateAsync(adv);
-                    }
-                }
-
-                await uow.CompleteAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error al procesar el ítem {ItemId} para vencimiento.", item.Id);
             }
         }
-
         // Alertas activas de ítems que ya no corresponden (consumidos o sin fecha)
         var idsVigentes = items.Select(i => i.Id).ToHashSet();
         var alertasActivas = await _alertRepository.GetListAsync(a => a.Activa);
