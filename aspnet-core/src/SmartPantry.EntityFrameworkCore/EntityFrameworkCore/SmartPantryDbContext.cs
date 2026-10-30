@@ -78,21 +78,13 @@ public class SmartPantryDbContext :
         builder.ConfigureFeatureManagement();
         builder.ConfigureTenantManagement();
 
-        /* Configure your own tables/entities inside here */
-
-        //builder.Entity<YourEntity>(b =>
-        //{
-        //    b.ToTable(SmartPantryConsts.DbTablePrefix + "YourEntities", SmartPantryConsts.DbSchema);
-        //    b.ConfigureByConvention(); //auto configure for the base class props
-        //    //...
-        //});
-
         builder.Entity<Product>(p =>
         {
            p.ToTable("Products", SmartPantryConsts.DbSchema);
-            p.ConfigureByConvention(); // auto configure for the base class props
+            p.ConfigureByConvention();
                             p.Property(x=>x.CodigoDeBarras).IsRequired().HasMaxLength(ProductConst.MaxCodDeBarraLength);
             p.Property(x => x.NombreVisible).IsRequired().HasMaxLength(ProductConst.MaxNombreVisibleLength);
+            p.Property(x => x.Marca).HasMaxLength(ProductConst.MaxMarcaLength);
             p.Property(x => x.Imagen).IsRequired(false);
         });
         builder.Entity<ExpirationAlert>(b =>

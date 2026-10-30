@@ -180,7 +180,8 @@ namespace SmartPantry.Migrations
                         .HasColumnName("LastModifierId");
 
                     b.Property<string>("Marca")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("NombreVisible")
                         .IsRequired()
