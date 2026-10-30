@@ -14,5 +14,6 @@ public class CreateUpdateProductDto
     public string? Imagen { get; set; } 
     public float? NutriScore { get; set; }
     public int? Nova { get; set; }
- 
+    public string? Marca { get; set; }
+
 }
