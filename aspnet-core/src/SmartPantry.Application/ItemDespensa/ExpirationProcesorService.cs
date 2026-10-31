@@ -1,0 +1,114 @@
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Volo.Abp.DependencyInjection;
+using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
+using Microsoft.Extensions.Logging;
+
+namespace SmartPantry;
+
+public class ExpirationProcessorService : ITransientDependency
+{
+    private readonly IRepository<ItemDespensa, Guid> _itemRepository;
+    private readonly IRepository<ExpirationAlert, Guid> _alertRepository;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
+    private readonly ILogger<ExpirationProcessorService> _logger;
+
+    public ExpirationProcessorService(
+        IRepository<ItemDespensa, Guid> itemRepository,
+        IRepository<ExpirationAlert, Guid> alertRepository,
+        IUnitOfWorkManager unitOfWorkManager,
+        ILogger<ExpirationProcessorService> logger)
+    {
+        _itemRepository = itemRepository;
+        _alertRepository = alertRepository;
+        _unitOfWorkManager = unitOfWorkManager;
+        _logger = logger;
+    }
+
+    public async Task ProcesarVencimientosAsync(DateOnly hoy)
+    {
+        var fechaUmbral = hoy.AddDays(ExpirationConst.UmbralDiasAviso);
+
+        var items = await _itemRepository.GetListAsync(
+            x => x.Estado == EstadoItemDespensa.Disponible && x.FechaVencimiento != null
+        );
+
+        foreach (var item in items)
+        {
+            var fechaVenc = item.FechaVencimiento!.Value;
+            EstadoVencimiento? estadoDetectado = null;
+            string mensaje = string.Empty;
+
+            if (fechaVenc < hoy)
+            {
+                estadoDetectado = EstadoVencimiento.Vencido;
+                mensaje = $"El producto ha vencido el {fechaVenc:yyyy-MM-dd}.";
+            }
+            else if (fechaVenc <= fechaUmbral)
+            {
+                estadoDetectado = EstadoVencimiento.ProximoAVencer;
+                mensaje = $"El producto está próximo a vencer el {fechaVenc:yyyy-MM-dd}.";
+            }
+
+            try
+            {
+                using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
+                {
+                    var advertencia = await _alertRepository.FirstOrDefaultAsync(
+                        a => a.ItemDespensaId == item.Id && a.Tipo == TipoAdvertencia.Vencimiento
+                    );
+
+                    if (estadoDetectado != null)
+                    {
+                        if (advertencia == null)
+                        {
+                            await _alertRepository.InsertAsync(
+                                new ExpirationAlert(Guid.NewGuid(), item.Id, estadoDetectado.Value, mensaje));
+                        }
+                        else
+                        {
+                            // La misma fila: se actualiza el estado y el mensaje, y se reactiva si estaba inactiva
+                            advertencia.ActualizarEstado(estadoDetectado.Value, mensaje);
+                            await _alertRepository.UpdateAsync(advertencia);
+                        }
+                    }
+                    else if (advertencia != null && advertencia.Activa)
+                    {
+                        // Fuera del umbral: se desactiva, no se borra
+                        advertencia.Desactivar();
+                        await _alertRepository.UpdateAsync(advertencia);
+                    }
+
+                    await uow.CompleteAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error al procesar el ítem {ItemId} para vencimiento.", item.Id);
+            }
+        }
+
+        // Alertas activas de ítems que ya no corresponden (consumidos o sin fecha)
+        var idsVigentes = items.Select(i => i.Id).ToHashSet();
+        var alertasActivas = await _alertRepository.GetListAsync(a => a.Activa);
+        var sinCorresponder = alertasActivas
+            .Where(a => !idsVigentes.Contains(a.ItemDespensaId))
+            .ToList();
+
+        if (sinCorresponder.Count > 0)
+        {
+            using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
+            {
+                foreach (var alerta in sinCorresponder)
+                {
+                    alerta.Desactivar();
+                    await _alertRepository.UpdateAsync(alerta);
+                }
+
+                await uow.CompleteAsync();
+            }
+        }
+    }
+}
