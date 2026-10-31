@@ -6,7 +6,8 @@ namespace SmartPantry;
 public class ExpirationAlert : AuditedAggregateRoot<Guid>
 {
     public Guid ItemDespensaId { get; private set; }
-    public TipoAdvertenciaVencimiento Tipo { get; private set; }
+    public TipoAdvertencia Tipo { get; private set; }
+    public EstadoVencimiento Estado { get; private set; }
     public string Mensaje { get; private set; } = string.Empty;
     public bool Activa { get; private set; }
 
@@ -17,19 +18,21 @@ public class ExpirationAlert : AuditedAggregateRoot<Guid>
     public ExpirationAlert(
         Guid id,
         Guid itemDespensaId,
-        TipoAdvertenciaVencimiento tipo,
+        EstadoVencimiento estado,
         string mensaje) : base(id)
     {
         ItemDespensaId = itemDespensaId;
-        Tipo = tipo;
+        Tipo = TipoAdvertencia.Vencimiento;
+        Estado = estado;
         Mensaje = mensaje;
-        Activa = true; 
+        Activa = true;
     }
 
-    public void ActualizarMensaje(string nuevoMensaje)
+    public void ActualizarEstado(EstadoVencimiento nuevoEstado, string nuevoMensaje)
     {
+        Estado = nuevoEstado;
         Mensaje = nuevoMensaje;
-        Activa = true; 
+        Activa = true;
     }
 
     public void Desactivar()
@@ -37,10 +40,7 @@ public class ExpirationAlert : AuditedAggregateRoot<Guid>
         Activa = false;
     }
 
-    public void Activar()
-    {
-        Activa = true;
-    }
+    
 }
 
 

@@ -1,6 +1,6 @@
 ﻿namespace SmartPantry;
 
-public enum TipoAdvertenciaVencimiento
+public enum EstadoVencimiento
 {
     ProximoAVencer = 1,
     Vencido = 2

@@ -38,57 +38,47 @@ public class ExpirationProcessorService : ITransientDependency
         foreach (var item in items)
         {
             var fechaVenc = item.FechaVencimiento!.Value;
-            TipoAdvertenciaVencimiento? tipoDetectado = null;
+            EstadoVencimiento? estadoDetectado = null;
             string mensaje = string.Empty;
 
             if (fechaVenc < hoy)
             {
-                tipoDetectado = TipoAdvertenciaVencimiento.Vencido;
+                estadoDetectado = EstadoVencimiento.Vencido;
                 mensaje = $"El producto ha vencido el {fechaVenc:yyyy-MM-dd}.";
             }
             else if (fechaVenc <= fechaUmbral)
             {
-                tipoDetectado = TipoAdvertenciaVencimiento.ProximoAVencer;
+                estadoDetectado = EstadoVencimiento.ProximoAVencer;
                 mensaje = $"El producto está próximo a vencer el {fechaVenc:yyyy-MM-dd}.";
             }
+
             try
             {
                 using (var uow = _unitOfWorkManager.Begin(requiresNew: true))
                 {
-                    var advertenciaExistente = await _alertRepository.FirstOrDefaultAsync(
-                        a => a.ItemDespensaId == item.Id && a.Tipo == tipoDetectado
+                    var advertencia = await _alertRepository.FirstOrDefaultAsync(
+                        a => a.ItemDespensaId == item.Id && a.Tipo == TipoAdvertencia.Vencimiento
                     );
 
-                    if (tipoDetectado != null)
+                    if (estadoDetectado != null)
                     {
-                        if (advertenciaExistente == null)
+                        if (advertencia == null)
                         {
-                            var nuevaAdvertencia = new ExpirationAlert(
-                                Guid.NewGuid(),
-                                item.Id,
-                                tipoDetectado.Value,
-                                mensaje
-                            );
-                            await _alertRepository.InsertAsync(nuevaAdvertencia);
+                            await _alertRepository.InsertAsync(
+                                new ExpirationAlert(Guid.NewGuid(), item.Id, estadoDetectado.Value, mensaje));
                         }
                         else
                         {
-                            advertenciaExistente.ActualizarMensaje(mensaje);
-                            await _alertRepository.UpdateAsync(advertenciaExistente);
+                            // La misma fila: se actualiza el estado y el mensaje, y se reactiva si estaba inactiva
+                            advertencia.ActualizarEstado(estadoDetectado.Value, mensaje);
+                            await _alertRepository.UpdateAsync(advertencia);
                         }
                     }
-
-                    var advertenciasActivasDelItem = await _alertRepository.GetListAsync(
-                        a => a.ItemDespensaId == item.Id && a.Activa
-                    );
-
-                    foreach (var adv in advertenciasActivasDelItem)
+                    else if (advertencia != null && advertencia.Activa)
                     {
-                        if (adv.Tipo != tipoDetectado)
-                        {
-                            adv.Desactivar();
-                            await _alertRepository.UpdateAsync(adv);
-                        }
+                        // Fuera del umbral: se desactiva, no se borra
+                        advertencia.Desactivar();
+                        await _alertRepository.UpdateAsync(advertencia);
                     }
 
                     await uow.CompleteAsync();
@@ -99,6 +89,7 @@ public class ExpirationProcessorService : ITransientDependency
                 _logger.LogWarning(ex, "Error al procesar el ítem {ItemId} para vencimiento.", item.Id);
             }
         }
+
         // Alertas activas de ítems que ya no corresponden (consumidos o sin fecha)
         var idsVigentes = items.Select(i => i.Id).ToHashSet();
         var alertasActivas = await _alertRepository.GetListAsync(a => a.Activa);

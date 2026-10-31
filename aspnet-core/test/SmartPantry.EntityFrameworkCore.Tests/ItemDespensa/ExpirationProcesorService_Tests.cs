@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Shouldly;
+﻿using Shouldly;
 using SmartPantry.EntityFrameworkCore;
 using System;
 using System.Linq;
@@ -22,6 +21,7 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         _itemRepository = GetRequiredService<IRepository<ItemDespensa, Guid>>();
         _alertRepository = GetRequiredService<IRepository<ExpirationAlert, Guid>>();
     }
+
     private async Task<ItemDespensa> CrearItemAsync(DateOnly? fechaVencimiento)
     {
         var item = new ItemDespensa(
@@ -40,19 +40,19 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
     [Fact]
     public async Task Should_Create_Expiration_Warning_When_Item_Is_Close_To_Expire()
     {
-
         var item = await CrearItemAsync(Hoy);
+
         await _ExpirationProcessorService.ProcesarVencimientosAsync(Hoy);
 
         var advertencias = await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id);
         advertencias.Count.ShouldBe(1);
 
         var adv = advertencias[0];
-        adv.Tipo.ShouldBe(TipoAdvertenciaVencimiento.ProximoAVencer);
+        adv.Tipo.ShouldBe(TipoAdvertencia.Vencimiento);
+        adv.Estado.ShouldBe(EstadoVencimiento.ProximoAVencer);
         adv.Activa.ShouldBeTrue();
     }
 
-    
     [Fact]
     public async Task Should_Create_Warning_On_Threshold_Limit_Day()
     {
@@ -63,7 +63,7 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
 
         var advertencias = await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id);
         advertencias.Count.ShouldBe(1);
-        advertencias[0].Tipo.ShouldBe(TipoAdvertenciaVencimiento.ProximoAVencer);
+        advertencias[0].Estado.ShouldBe(EstadoVencimiento.ProximoAVencer);
         advertencias[0].Activa.ShouldBeTrue();
     }
 
@@ -88,10 +88,10 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         await _ExpirationProcessorService.ProcesarVencimientosAsync(Hoy);
 
         var alertaHoy = (await _alertRepository.GetListAsync(a => a.ItemDespensaId == venceHoy.Id)).Single();
-        alertaHoy.Tipo.ShouldBe(TipoAdvertenciaVencimiento.ProximoAVencer);
+        alertaHoy.Estado.ShouldBe(EstadoVencimiento.ProximoAVencer);
 
         var alertaAyer = (await _alertRepository.GetListAsync(a => a.ItemDespensaId == venceAyer.Id)).Single();
-        alertaAyer.Tipo.ShouldBe(TipoAdvertenciaVencimiento.Vencido);
+        alertaAyer.Estado.ShouldBe(EstadoVencimiento.Vencido);
         alertaAyer.Activa.ShouldBeTrue();
     }
 
@@ -140,8 +140,9 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         var advertencias = await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id);
         advertencias.Count.ShouldBe(1);
         advertencias[0].Id.ShouldBe(primera.Id);
-        advertencias[0].Tipo.ShouldBe(TipoAdvertenciaVencimiento.Vencido);
+        advertencias[0].Estado.ShouldBe(EstadoVencimiento.Vencido);
     }
+
     [Fact]
     public async Task Should_Update_Deactivate_And_Reactivate_Same_Warning_When_Date_Changes()
     {
@@ -152,7 +153,7 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         var original = (await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id)).Single();
         original.Activa.ShouldBeTrue();
 
-        //Cambia la fecha pero sigue dentro del umbral: se actualiza el mensaje
+        // Cambia la fecha pero sigue dentro del umbral: se actualiza el mensaje
         var nuevaFecha = Hoy.AddDays(2);
         item.ActualizarFechaVencimiento(nuevaFecha);
         await _itemRepository.UpdateAsync(item, autoSave: true);
@@ -163,7 +164,7 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         actualizada.Activa.ShouldBeTrue();
         actualizada.Mensaje.ShouldContain(nuevaFecha.ToString("yyyy-MM-dd"));
 
-        //La fecha sale del umbral: se desactiva, no se borra
+        // La fecha sale del umbral: se desactiva, no se borra
         item.ActualizarFechaVencimiento(Hoy.AddDays(30));
         await _itemRepository.UpdateAsync(item, autoSave: true);
         await _ExpirationProcessorService.ProcesarVencimientosAsync(Hoy);
@@ -172,7 +173,7 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         desactivada.Id.ShouldBe(original.Id);
         desactivada.Activa.ShouldBeFalse();
 
-        //La fecha vuelve a entrar en el umbral: se reactiva la misma advertencia
+        // La fecha vuelve a entrar en el umbral: se reactiva la misma advertencia
         item.ActualizarFechaVencimiento(Hoy.AddDays(1));
         await _itemRepository.UpdateAsync(item, autoSave: true);
         await _ExpirationProcessorService.ProcesarVencimientosAsync(Hoy);
@@ -180,5 +181,25 @@ public class ExpirationProcesorService_Test : SmartPantryEntityFrameworkCoreTest
         var reactivada = (await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id)).Single();
         reactivada.Id.ShouldBe(original.Id);
         reactivada.Activa.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Should_Keep_Single_Warning_And_Change_State_When_Item_Goes_From_Soon_To_Expired()
+    {
+        var item = await CrearItemAsync(Hoy.AddDays(1));
+
+        await _ExpirationProcessorService.ProcesarVencimientosAsync(Hoy);
+        var original = (await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id)).Single();
+        original.Estado.ShouldBe(EstadoVencimiento.ProximoAVencer);
+
+        // Pasan los días: el mismo ítem ahora está vencido
+        var pasadoManana = Hoy.AddDays(2);
+        await _ExpirationProcessorService.ProcesarVencimientosAsync(pasadoManana);
+
+        var alertas = await _alertRepository.GetListAsync(a => a.ItemDespensaId == item.Id);
+        alertas.Count.ShouldBe(1);
+        alertas[0].Id.ShouldBe(original.Id);
+        alertas[0].Estado.ShouldBe(EstadoVencimiento.Vencido);
+        alertas[0].Activa.ShouldBeTrue();
     }
 }
