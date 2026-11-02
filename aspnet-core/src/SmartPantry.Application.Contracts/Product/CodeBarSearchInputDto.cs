@@ -5,6 +5,6 @@ namespace SmartPantry;
 public class BarcodeSearchInputDto
 {
     [Required]
-    [StringLength(50, MinimumLength = 1)]
+    [StringLength(ProductConst.MaxCodDeBarraLength, MinimumLength = 1)]
     public string CodigoDeBarras { get; set; } = string.Empty;
 }

@@ -44,9 +44,11 @@ public class Product : AuditedAggregateRoot<Guid>
             nombVisible, nameof(nombVisible), maxLength: ProductConst.MaxNombreVisibleLength)
             .ToLower();
 
-        if (nova is < 1 or > 4)
+        if (nova is < ProductConst.MinNovaGroup or > ProductConst.MaxNovaGroup)
         {
-            throw new ArgumentOutOfRangeException(nameof(nova), nova, "Nova debe estar entre 1 y 4.");
+            throw new ArgumentOutOfRangeException(
+                nameof(nova), nova,
+                $"Nova debe estar entre {ProductConst.MinNovaGroup} y {ProductConst.MaxNovaGroup}.");
         }
 
         CodigoDeBarras = codigoValidado;
