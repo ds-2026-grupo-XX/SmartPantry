@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -7,17 +8,21 @@ using Volo.Abp.Domain.Repositories;
 
 namespace SmartPantry;
 
+[Authorize]
 public class ProductAppService :
     CrudAppService<Product, ProductDto, Guid, PagedAndSortedResultRequestDto, CreateUpdateProductDto>,
     IProductAppService
 {
     private readonly IExternalProductCatalogClient _externalClient;
+    // private readonly ExpirationProcessorService _expirationProcessorService; // Comentado (prueba de expiración)
 
     public ProductAppService(
         IRepository<Product, Guid> repository,
-        IExternalProductCatalogClient externalClient) : base(repository)
+        IExternalProductCatalogClient externalClient/*,
+        ExpirationProcessorService expirationProcessorService*/) : base(repository)
     {
         _externalClient = externalClient;
+        // _expirationProcessorService = expirationProcessorService;
     }
 
     public override async Task<ProductDto> CreateAsync(CreateUpdateProductDto input)
@@ -59,7 +64,6 @@ public class ProductAppService :
     {
         var externalProduct = await _externalClient.GetByBarcodeAsync(input.CodigoDeBarras);
 
-        
         if (externalProduct == null || !externalProduct.Encontrado)
         {
             throw new UserFriendlyException("El producto no fue encontrado en el catálogo externo.");
@@ -67,4 +71,12 @@ public class ProductAppService :
 
         return externalProduct;
     }
+
+    /*
+    // Endpoint temporal comentado para dejar el servicio limpio
+    public async Task TestExpirationAsync()
+    {
+        await _expirationProcessorService.ProcesarVencimientosAsync(DateOnly.FromDateTime(DateTime.Today));
+    }
+    */
 }
