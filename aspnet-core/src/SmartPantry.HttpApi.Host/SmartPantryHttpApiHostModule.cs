@@ -86,30 +86,35 @@ public class SmartPantryHttpApiHostModule : AbpModule
 
     private static void ConfigureSwagger(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAbpSwaggerGen(options =>
-        {
-            options.SwaggerDoc("v1", new OpenApiInfo
+        services.AddAbpSwaggerGenWithOidc(
+            configuration["AuthServer:Authority"]!,
+            ["SmartPantry"],
+            [AbpSwaggerOidcFlows.AuthorizationCode],
+            null,
+            options =>
             {
-                Title = "SmartPantry API",
-                Version = "v1"
-            });
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "SmartPantry API",
+                    Version = "v1"
+                });
 
-            options.DocInclusionPredicate((docName, description) => true);
-            options.CustomSchemaIds(type => type.FullName);
+                options.DocInclusionPredicate((docName, description) => true);
+                options.CustomSchemaIds(type => type.FullName);
 
-            // Configuración de Bearer requerida para el TP-09
-            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-            {
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                Description = "Pegue access_token sin el prefijo Bearer."
-            });
+                
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    Description = "Pegue access_token sin el prefijo Bearer."
+                });
 
-            options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
-            {
-                [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+                });
             });
-        });
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
