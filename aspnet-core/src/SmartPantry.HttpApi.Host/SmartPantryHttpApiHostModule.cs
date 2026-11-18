@@ -66,13 +66,13 @@ public class SmartPantryHttpApiHostModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
+        ConfigureSwagger(context.Services, configuration);
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureUrls(configuration);
         ConfigureConventionalControllers();
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
-        ConfigureSwaggerServices(context, configuration);
 
         context.Services.AddHttpClient<
             IExternalProductCatalogClient,
@@ -81,6 +81,39 @@ public class SmartPantryHttpApiHostModule : AbpModule
                 client.BaseAddress = new Uri("https://world.openfoodfacts.org/");
                 client.Timeout = TimeSpan.FromSeconds(10);
                 client.DefaultRequestHeaders.Add("User-Agent", "SmartPantry - UTN FRCU - TP07 (contacto@utn.edu.ar)");
+            });
+    }
+
+    private static void ConfigureSwagger(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddAbpSwaggerGenWithOidc(
+            configuration["AuthServer:Authority"]!,
+            ["SmartPantry"],
+            [AbpSwaggerOidcFlows.AuthorizationCode],
+            null,
+            options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "SmartPantry API",
+                    Version = "v1"
+                });
+
+                options.DocInclusionPredicate((docName, description) => true);
+                options.CustomSchemaIds(type => type.FullName);
+
+                
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    Description = "Pegue access_token sin el prefijo Bearer."
+                });
+
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+                });
             });
     }
 
@@ -151,22 +184,6 @@ public class SmartPantryHttpApiHostModule : AbpModule
         });
     }
 
-    private static void ConfigureSwaggerServices(ServiceConfigurationContext context, IConfiguration configuration)
-    {
-        context.Services.AddAbpSwaggerGenWithOAuth(
-            configuration["AuthServer:Authority"]!,
-            new Dictionary<string, string>
-            {
-                    {"SmartPantry", "SmartPantry API"}
-            },
-            options =>
-            {
-                options.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartPantry API", Version = "v1" });
-                options.DocInclusionPredicate((docName, description) => true);
-                options.CustomSchemaIds(type => type.FullName);
-            });
-    }
-
     private void ConfigureCors(ServiceConfigurationContext context, IConfiguration configuration)
     {
         context.Services.AddCors(options =>
@@ -232,7 +249,11 @@ public class SmartPantryHttpApiHostModule : AbpModule
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
         app.UseConfiguredEndpoints();
+
+        // 1. Inicialización estándar del framework
+        await base.OnApplicationInitializationAsync(context);
+
+        // 2. Encendemos el Background Worker automáticamente al arrancar
         await context.AddBackgroundWorkerAsync<ExpirationWorker>();
     }
-
 }
