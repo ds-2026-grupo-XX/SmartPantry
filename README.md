@@ -61,3 +61,21 @@ Ejecuta el siguiente comando desde el directorio angular para correr los test de
 ```env
 yarn test
 ```
+
+## Mi despensa (RF-11) — TP 10
+
+### Lógica de ítems consumidos
+- Los ítems marcados como consumidos se distinguen en el estado/vista de **Mi despensa** para reflejar su consumo sin perder trazabilidad en la gestión de la despensa.
+- Las acciones de edición (`PUT`) y eliminación (`DELETE`) operan sobre el identificador del ítem (`id`) y pasan por las validaciones y reglas de negocio del backend (`ItemDespensaAppService`).
+
+### Uso y mock de `ListService`
+- En la vista Angular (`MyPantryComponent`), `ListService` de ABP se utiliza para orquestar la consulta paginada/filtrada de ítems contra `ItemDespensaService`.
+- En las pruebas unitarias con **Vitest**, `ListService` (junto con `ItemDespensaService`, `ConfirmationService` y el router) se mockea para aislar el comportamiento del componente y verificar el renderizado, filtros/acciones y respuestas sin depender del backend ni del ciclo real de ABP.
+
+### Manejo de fechas
+- Las fechas asociadas a los ítems (como vencimientos) se envían y reciben en formato ISO (`YYYY-MM-DD` / ISO string según el DTO generado en `proxy/`) y se normalizan/formatean en la capa de presentación para evitar desfases de zona horaria.
+
+### Estrategia de manejo de errores y autorización
+- Las llamadas HTTP a la API pasan por el pipeline de autenticación/autorización con token `Bearer` y cabecera antiforgery (`RequestVerificationToken`) cuando aplica.
+- Los errores devueltos por el servidor (incluyendo rechazos de validación/negocio o intentos de operar sobre recursos que no corresponden al usuario/estado esperado, como respuestas `400` en `DELETE`/`PUT` sobre ítems ajenos) se capturan y se informan al usuario mediante feedback en la interfaz sin exponer detalles internos ni credenciales.
+- Las pruebas unitarias del componente cubren tanto los caminos exitosos como los escenarios de error/validación.

@@ -3,7 +3,32 @@
   "texts": {
     "AppName": "SmartPantry",
     "Menu:Home": "Inicio",
+    "Menu:MyPantry": "Mi despensa",
     "Welcome": "Bienvenido",
-    "LongWelcomeMessage": "Bienvenido a la aplicación, este es un proyecto base basado en el framework ABP. Para más información, visita abp.io."
+    "LongWelcomeMessage": "Bienvenido a la aplicación, este es un proyecto base basado en el framework ABP. Para más información, visita abp.io.",
+    "Pantry:Loading": "Cargando tu despensa...",
+    "Pantry:LoadError": "No se pudieron cargar los ítems de la despensa.",
+    "Pantry:Retry": "Reintentar",
+    "Pantry:Empty": "Todavía no tenés ítems cargados en tu despensa.",
+    "Pantry:Product": "Producto",
+    "Pantry:Quantity": "Cantidad",
+    "Pantry:Unit": "Unidad",
+    "Pantry:ExpirationDate": "Vencimiento",
+    "Pantry:Status": "Estado",
+    "Pantry:StatusAvailable": "Disponible",
+    "Pantry:StatusConsumed": "Consumido",
+    "Pantry:NotAvailable": "No disponible",
+    "Pantry:Actions": "Acciones",
+    "Pantry:Edit": "Editar",
+    "Pantry:MarkAsConsumed": "Marcar como consumido",
+    "Pantry:Delete": "Eliminar",
+    "Pantry:EditTitle": "Editar ítem de despensa",
+    "Pantry:Save": "Guardar",
+    "Pantry:Cancel": "Cancelar",
+    "Pantry:DeleteConfirmMessage": "¿Estás seguro de que querés eliminar este ítem de tu despensa?",
+    "Pantry:DeleteConfirmTitle": "Confirmar eliminación",
+    "Pantry:ActionError": "No se pudo completar la operación.",
+    "Pantry:InvalidQuantity": "La cantidad no puede ser negativa.",
+    "Pantry:InvalidExpirationDate": "Ingresá una fecha de vencimiento válida."
   }
 }
