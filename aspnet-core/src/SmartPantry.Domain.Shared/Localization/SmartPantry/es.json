@@ -29,6 +29,8 @@
     "Pantry:DeleteConfirmTitle": "Confirmar eliminación",
     "Pantry:ActionError": "No se pudo completar la operación.",
     "Pantry:InvalidQuantity": "La cantidad no puede ser negativa.",
-    "Pantry:InvalidExpirationDate": "Ingresá una fecha de vencimiento válida."
+    "Pantry:InvalidExpirationDate": "Ingresá una fecha de vencimiento válida.",
+    "Pantry:InvalidUnit": "La unidad no puede superar los 50 caracteres."
+    
   }
 }
