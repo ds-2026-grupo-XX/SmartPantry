@@ -44,7 +44,17 @@ public class ItemDespensa : AuditedAggregateRoot<Guid>
     {
         FechaVencimiento = nuevaFecha;
     }
+    public void ActualizarDatos(int cantidad, string? unidad, DateOnly? fechaVencimiento)
+    {
+        if (cantidad < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(cantidad), cantidad, "La cantidad no puede ser negativa.");
+        }
 
+        Cantidad = cantidad;
+        Unidad = Check.Length(unidad, nameof(unidad), ItemDespensaConst.MaxUnidadLength);
+        FechaVencimiento = fechaVencimiento;
+    }
 
 
 }
