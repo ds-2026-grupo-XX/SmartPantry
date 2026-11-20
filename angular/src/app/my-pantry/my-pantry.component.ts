@@ -1,3 +1,4 @@
+import { EMPTY, catchError } from 'rxjs';
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import {
@@ -22,14 +23,38 @@ import {
   type UpdateItemDespensaDto,
 } from '../proxy/index';
 
-function validDateValidator(): ValidatorFn {
+const MAX_UNIT_LENGTH = 50;
+
+function validDateValidator(isBadInputFn: () => boolean): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
+    if (isBadInputFn()) {
+      return { invalidDate: true };
+    }
+
     const value = control.value;
     if (!value) {
       return null;
     }
-    const date = new Date(`${value}T00:00:00`);
-    return Number.isNaN(date.getTime()) ? { invalidDate: true } : null;
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value).trim());
+    if (!match) {
+      return { invalidDate: true };
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return { invalidDate: true };
+    }
+
+    return null;
   };
 }
 
@@ -78,6 +103,11 @@ function validDateValidator(): ValidatorFn {
                     class="form-control"
                     formControlName="unidad"
                   />
+                  @if (editForm.get('unidad')?.invalid && (editForm.get('unidad')?.touched || editForm.get('unidad')?.dirty)) {
+                    <div class="text-danger small mt-1">
+                      {{ '::Pantry:InvalidUnit' | abpLocalization }}
+                    </div>
+                  }
                 </div>
 
                 <div class="col-12 col-md-4">
@@ -87,8 +117,10 @@ function validDateValidator(): ValidatorFn {
                     type="date"
                     class="form-control"
                     formControlName="fechaVencimiento"
+                    (input)="onDateInput($event)"
+                    (blur)="onDateInput($event)"
                   />
-                  @if (editForm.get('fechaVencimiento')?.invalid && (editForm.get('fechaVencimiento')?.touched || editForm.get('fechaVencimiento')?.dirty)) {
+                  @if (editForm.get('fechaVencimiento')?.invalid && (editForm.get('fechaVencimiento')?.touched || editForm.get('fechaVencimiento')?.dirty || isDateInputInvalid)) {
                     <div class="text-danger small mt-1">
                       {{ '::Pantry:InvalidExpirationDate' | abpLocalization }}
                     </div>
@@ -244,17 +276,26 @@ export class MyPantryComponent implements OnInit {
   isLoading = false;
   hasError = false;
   isSaving = false;
+  isDateInputInvalid = false;
   busyItemId: string | null = null;
   editingItem: ItemDespensaDto | null = null;
 
   editForm: FormGroup = this.fb.group({
     cantidad: [0, [Validators.required, Validators.min(0)]],
-    unidad: [''],
-    fechaVencimiento: [null, [validDateValidator()]],
+    unidad: ['', [Validators.maxLength(MAX_UNIT_LENGTH)]],
+    fechaVencimiento: [null, [validDateValidator(() => this.isDateInputInvalid)]],
   });
 
   ngOnInit(): void {
     this.loadItems();
+  }
+
+  onDateInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.isDateInputInvalid = input.validity?.badInput ?? false;
+    const control = this.editForm.get('fechaVencimiento');
+    control?.markAsDirty();
+    control?.updateValueAndValidity();
   }
 
   loadItems(): void {
@@ -262,11 +303,23 @@ export class MyPantryComponent implements OnInit {
     this.hasError = false;
 
     const streamCreator = (query: any) =>
-      this.itemDespensaService.getList({
-        skipCount: query.skipCount ?? 0,
-        maxResultCount: query.maxResultCount ?? 10,
-        sorting: query.sorting,
-      });
+      this.itemDespensaService
+        .getList(
+          {
+            skipCount: query.skipCount ?? 0,
+            maxResultCount: query.maxResultCount ?? 10,
+            sorting: query.sorting,
+          },
+          { skipHandleError: true }
+        )
+        .pipe(
+          catchError(() => {
+            this.isLoading = false;
+            this.hasError = true;
+            this.cdr.detectChanges();
+            return EMPTY;
+          })
+        );
 
     this.list.hookToQuery(streamCreator).subscribe({
       next: (response) => {
@@ -275,16 +328,12 @@ export class MyPantryComponent implements OnInit {
         this.hasError = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.isLoading = false;
-        this.hasError = true;
-        this.cdr.detectChanges();
-      },
     });
   }
 
   startEdit(item: ItemDespensaDto): void {
     this.editingItem = item;
+    this.isDateInputInvalid = false;
     this.editForm.reset({
       cantidad: item.cantidad ?? 0,
       unidad: item.unidad ?? '',
@@ -296,6 +345,7 @@ export class MyPantryComponent implements OnInit {
   cancelEdit(): void {
     this.editingItem = null;
     this.isSaving = false;
+    this.isDateInputInvalid = false;
     this.cdr.detectChanges();
   }
 
@@ -316,6 +366,7 @@ export class MyPantryComponent implements OnInit {
       next: () => {
         this.isSaving = false;
         this.editingItem = null;
+        this.isDateInputInvalid = false;
         this.list.get();
         this.cdr.detectChanges();
       },

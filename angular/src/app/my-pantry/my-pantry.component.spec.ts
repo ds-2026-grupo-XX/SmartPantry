@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ListService,
@@ -28,7 +28,12 @@ describe('MyPantryComponent', () => {
     },
   ];
 
-  async function setupComponent(getListFactory: () => any) {
+  async function setupComponent(
+    getListFactory: () => any,
+    options?: { flushInitial?: boolean }
+  ) {
+    const flushInitial = options?.flushInitial ?? true;
+
     const itemDespensaServiceMock = {
       getList: vi.fn().mockImplementation(getListFactory),
       update: vi.fn(),
@@ -76,8 +81,11 @@ describe('MyPantryComponent', () => {
     const fixture: ComponentFixture<MyPantryComponent> = TestBed.createComponent(MyPantryComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+
+    if (flushInitial) {
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
 
     return {
       fixture,
@@ -91,6 +99,17 @@ describe('MyPantryComponent', () => {
 
   beforeEach(() => {
     TestBed.resetTestingModule();
+  });
+
+  it('debe mostrar estado de carga y no mostrar mensaje de lista vacía mientras getList está pendiente', async () => {
+    const pending$ = new Subject<PagedResultDto<ItemDespensaDto>>();
+    const { component, fixture } = await setupComponent(() => pending$.asObservable(), {
+      flushInitial: false,
+    });
+
+    expect(component.isLoading).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('::Pantry:Loading');
+    expect(fixture.nativeElement.textContent).not.toContain('::Pantry:Empty');
   });
 
   it('debe mostrar estado vacío cuando no hay ítems', async () => {
@@ -146,6 +165,28 @@ describe('MyPantryComponent', () => {
     component.saveEdit();
 
     expect(component.editForm.invalid).toBe(true);
+    expect(itemDespensaServiceMock.update).not.toHaveBeenCalled();
+  });
+
+  it('no debe llamar a update ni enviar datos si la unidad supera la longitud máxima (50)', async () => {
+    const items = createSampleItems();
+    const { component, fixture, itemDespensaServiceMock } = await setupComponent(() =>
+      of({
+        items,
+        totalCount: 1,
+      })
+    );
+
+    component.startEdit(items[0]);
+    const unidadControl = component.editForm.get('unidad');
+    unidadControl?.setValue('a'.repeat(51));
+    unidadControl?.markAsTouched();
+    fixture.detectChanges();
+    component.saveEdit();
+
+    expect(unidadControl?.hasError('maxlength')).toBe(true);
+    expect(component.editForm.invalid).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('::Pantry:InvalidUnit');
     expect(itemDespensaServiceMock.update).not.toHaveBeenCalled();
   });
 
